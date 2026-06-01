@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: styleforge_db
+    environment:
+      POSTGRES_USER: styleforge_user
+      POSTGRES_PASSWORD: styleforge_password
+      POSTGRES_DB: styleforge_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U styleforge_user -d styleforge_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: styleforge_gateway
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key}
+      - AUTH_SERVICE_URL=http://auth:8001
+      - CATALOG_SERVICE_URL=http://catalog:8002
+      - ORDERS_SERVICE_URL=http://orders:8003
+      - ANALYTICS_SERVICE_URL=http://analytics:8004
+      - AUDIT_SERVICE_URL=http://audit:8005
+      - GENAI_SERVICE_URL=http://genai:8006
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+      catalog:
+        condition: service_started
+
+  auth:
+    build:
+      context: .
+      dockerfile: auth/Dockerfile
+    container_name: styleforge_auth
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - AUDIT_SERVICE_URL=http://audit:8005
+    depends_on:
+      db:
+        condition: service_healthy
+
+  catalog:
+    build:
+      context: .
+      dockerfile: catalog/Dockerfile
+    container_name: styleforge_catalog
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+      - AUDIT_SERVICE_URL=http://audit:8005
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  orders:
+    build:
+      context: .
+      dockerfile: orders/Dockerfile
+    container_name: styleforge_orders
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+      - AUDIT_SERVICE_URL=http://audit:8005
+    depends_on:
+      db:
+        condition: service_healthy
+
+  analytics:
+    build:
+      context: .
+      dockerfile: analytics/Dockerfile
+    container_name: styleforge_analytics
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+      - AUDIT_SERVICE_URL=http://audit:8005
+    depends_on:
+      db:
+        condition: service_healthy
+
+  audit:
+    build:
+      context: .
+      dockerfile: audit/Dockerfile
+    container_name: styleforge_audit
+    environment:
+      - POSTGRES_URL=postgresql+asyncpg://styleforge_user:styleforge_password@db:5432/styleforge_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  genai:
+    build:
+      context: .
+      dockerfile: genai/Dockerfile
+    container_name: styleforge_genai
+    environment:
+      - COMFYUI_URL=host.docker.internal:8188 # Assuming ComfyUI runs locally on host
+      - AUDIT_SERVICE_URL=http://audit:8005
+    depends_on:
+      audit:
+        condition: service_started
+
+volumes:
+  postgres_data:
