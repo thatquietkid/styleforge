@@ -4,12 +4,13 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeft,
   Upload,
   Mic,
+  MicOff,
   Loader2,
   CheckCircle,
   XCircle,
@@ -97,6 +98,124 @@ export default function OutfitAIPage() {
   const [sketchFile, setSketchFile] = useState(null);
   const [sketchPreview, setSketchPreview] = useState(null);
 
+  // ── Voice prompt state (MediaRecorder → backend Whisper, works over HTTP) ─
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
+  const [voiceSupported, setVoiceSupported] = useState(true);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+  // Check MediaRecorder browser support on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && !window.MediaRecorder) {
+      setVoiceSupported(false);
+    }
+  }, []);
+
+  const stopListening = useCallback(async () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsListening(false);
+  }, []);
+
+  const startListening = useCallback(async () => {
+    setVoiceError(null);
+    audioChunksRef.current = [];
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setVoiceError("Microphone access denied. Please allow microphone access in your browser settings.");
+      } else {
+        setVoiceError(`Could not access microphone: ${err.message}`);
+      }
+      return;
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "";
+
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+    mediaRecorderRef.current = recorder;
+
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+    };
+
+    recorder.onstop = async () => {
+      // Stop all mic tracks
+      stream.getTracks().forEach((t) => t.stop());
+
+      if (audioChunksRef.current.length === 0) {
+        setIsTranscribing(false);
+        return;
+      }
+
+      const blob = new Blob(audioChunksRef.current, {
+        type: recorder.mimeType || "audio/webm",
+      });
+
+      setIsTranscribing(true);
+      try {
+        const formData = new FormData();
+        formData.append("audio", blob, "voice.webm");
+
+        const res = await fetch(`${API_URL}/api/v1/genai/transcribe`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          let detail = `Server error ${res.status}`;
+          try {
+            const json = await res.json();
+            detail = json.detail || detail;
+          } catch (_) {}
+          throw new Error(detail);
+        }
+
+        const data = await res.json();
+        const transcript = (data.transcript || "").trim();
+        if (transcript) {
+          setPrompt((prev) => {
+            const sep = prev && !prev.endsWith(" ") ? " " : "";
+            return prev + sep + transcript;
+          });
+        } else {
+          setVoiceError("No speech detected in the recording. Please try again.");
+        }
+      } catch (err) {
+        setVoiceError(`Transcription failed: ${err.message}`);
+      } finally {
+        setIsTranscribing(false);
+      }
+    };
+
+    recorder.start();
+    setIsListening(true);
+  }, []);
+
+  const toggleVoice = useCallback(() => {
+    if (isListening) stopListening();
+    else startListening();
+  }, [isListening, startListening, stopListening]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
   // ── API state ───────────────────────────────────────────────────────────
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -126,7 +245,7 @@ export default function OutfitAIPage() {
       timer = setInterval(() => {
         index = (index + 1) % GENERATION_PHRASES.length;
         setLoadingPhrase(GENERATION_PHRASES[index]);
-      }, 2300); // 20 seconds total / 9 phases ≈ 2.2 - 2.3 seconds per phase feels very natural
+      }, 2300);
     }
     return () => clearInterval(timer);
   }, [isLoading]);
@@ -405,17 +524,93 @@ export default function OutfitAIPage() {
                 </div>
               </div>
 
+
               {/* VOICE CARD */}
-              <div className="p-6 rounded-[25px] bg-white/10 border border-white/10 backdrop-blur-xl hover:bg-white/15 transition duration-300">
+              <div
+                onClick={voiceSupported && !isTranscribing ? toggleVoice : undefined}
+                className={`p-6 rounded-[25px] border backdrop-blur-xl transition duration-300 select-none ${
+                  !voiceSupported
+                    ? "border-white/10 bg-white/5 opacity-50 cursor-not-allowed"
+                    : isTranscribing
+                    ? "border-amber-400/40 bg-amber-500/5 cursor-wait"
+                    : isListening
+                    ? "border-red-400/60 bg-red-500/10 hover:bg-red-500/15 cursor-pointer"
+                    : "border-white/10 bg-white/10 hover:bg-white/15 cursor-pointer"
+                }`}
+              >
                 <div className="flex flex-col items-center text-center gap-2">
-                  <Mic size={28} className="text-[#f6d7b0]" />
-                  <p className="text-xs font-bold">Voice Prompt</p>
-                  <p className="text-[10px] text-[#d8c7b5]/60">
-                    Dictate design specs audibly
+                  {/* Animated icon */}
+                  <div className="relative flex items-center justify-center w-10 h-10">
+                    {isListening && (
+                      <>
+                        <span className="absolute inset-0 rounded-full bg-red-400/30 animate-ping" />
+                        <span className="absolute inset-0 rounded-full bg-red-400/20 animate-pulse" />
+                      </>
+                    )}
+                    {isTranscribing ? (
+                      <Loader2 size={26} className="relative z-10 text-amber-400 animate-spin" />
+                    ) : isListening ? (
+                      <MicOff size={28} className="relative z-10 text-red-400" />
+                    ) : (
+                      <Mic size={28} className={voiceSupported ? "text-[#f6d7b0]" : "text-white/30"} />
+                    )}
+                  </div>
+
+                  <p className={`text-xs font-bold ${
+                    isTranscribing ? "text-amber-300" : isListening ? "text-red-300" : ""
+                  }`}>
+                    {isTranscribing ? "Transcribing…" : isListening ? "Recording…" : "Voice Prompt"}
+                  </p>
+
+                  <p className={`text-[10px] ${
+                    isTranscribing
+                      ? "text-amber-300/60"
+                      : isListening
+                      ? "text-red-300/60"
+                      : "text-[#d8c7b5]/60"
+                  }`}>
+                    {!voiceSupported
+                      ? "Not supported"
+                      : isTranscribing
+                      ? "Processing audio…"
+                      : isListening
+                      ? "Tap to stop & transcribe"
+                      : "Dictate design specs"}
                   </p>
                 </div>
               </div>
             </div>
+
+
+            {/* VOICE ERROR */}
+            <AnimatePresence>
+              {voiceError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex flex-col gap-2 p-4 rounded-[20px] bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed"
+                >
+                  <div className="flex items-start gap-2">
+                    <MicOff size={15} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span className="font-semibold flex-1">{voiceError}</span>
+                    <button
+                      onClick={() => setVoiceError(null)}
+                      className="text-amber-400/60 hover:text-amber-300 transition flex-shrink-0"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  </div>
+                  {/* Retry button — appears for all voice errors */}
+                  <button
+                    onClick={() => { setVoiceError(null); startListening(); }}
+                    className="self-start ml-5 px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 hover:bg-amber-400/30 hover:text-amber-200 transition text-[10px] font-bold tracking-wide uppercase cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ERROR DISPLAY */}
             {error && (
@@ -424,6 +619,7 @@ export default function OutfitAIPage() {
                 <span>{error}</span>
               </div>
             )}
+
 
             {/* PROCESS TRIGGER */}
             <button

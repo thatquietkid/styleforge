@@ -707,6 +707,143 @@ async def health():
 
 
 # ---------------------------------------------------------------------------
+# Endpoint — Voice Transcription (local Whisper, no credits, no auth required)
+# ---------------------------------------------------------------------------
+
+# Inject bundled ffmpeg from imageio-ffmpeg into PATH at import time so that
+# Whisper can find it on Windows without a system-level ffmpeg install.
+def _ensure_ffmpeg_on_path() -> None:
+    try:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()          # full path to ffmpeg.exe
+        ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+        if ffmpeg_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+    except Exception:
+        pass  # imageio-ffmpeg not installed; Whisper will try system ffmpeg
+
+_ensure_ffmpeg_on_path()
+
+# Cache the Whisper model at startup (downloaded once to ~/.cache/whisper/base.pt)
+_whisper_model = None
+
+def _get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            import whisper as _whisper
+            _whisper_model = _whisper.load_model("base")
+        except Exception as exc:
+            raise RuntimeError(f"Failed to load Whisper model: {exc}") from exc
+    return _whisper_model
+
+
+@app.post("/api/v1/genai/transcribe")
+async def transcribe_audio(
+    audio: UploadFile = File(..., description="Audio file recorded by the browser (webm/ogg/wav/mp4/flac)"),
+):
+    """
+    Transcribe browser-recorded audio using OpenAI Whisper running locally.
+    No credits are deducted and no authentication is required.
+    This endpoint exists so that the frontend voice-prompt feature works over
+    plain HTTP (localhost) without relying on Chrome's cloud Speech API.
+
+    ffmpeg is provided via imageio-ffmpeg (bundled binary, no system install needed).
+    """
+    import tempfile
+
+    # Verify whisper is importable
+    try:
+        import whisper as _whisper_check  # noqa: F401
+    except ModuleNotFoundError:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "detail": "openai-whisper is not installed. Run: pip install openai-whisper imageio-ffmpeg",
+                "code": "whisper_not_installed",
+            },
+        )
+
+    allowed_types = {
+        "audio/webm",
+        "audio/ogg",
+        "audio/wav",
+        "audio/wave",
+        "audio/x-wav",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/flac",
+        "audio/x-flac",
+        "audio/webm;codecs=opus",
+        "video/webm",
+        "video/webm;codecs=opus",
+    }
+
+    content_type = (audio.content_type or "").split(";")[0].strip()
+    if content_type not in allowed_types and not content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "detail": f"Unsupported audio type '{audio.content_type}'. Send webm, ogg, wav, mp4, or flac.",
+                "code": "invalid_audio_type",
+            },
+        )
+
+    audio_bytes = await audio.read()
+    if len(audio_bytes) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail={"detail": "Empty audio file.", "code": "empty_audio"},
+        )
+    if len(audio_bytes) > 25 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={"detail": "Audio file exceeds 25 MB limit.", "code": "file_too_large"},
+        )
+
+    ext_map = {
+        "audio/webm": ".webm", "video/webm": ".webm",
+        "audio/ogg": ".ogg",
+        "audio/wav": ".wav", "audio/wave": ".wav", "audio/x-wav": ".wav",
+        "audio/mp4": ".mp4",
+        "audio/mpeg": ".mp3",
+        "audio/flac": ".flac", "audio/x-flac": ".flac",
+    }
+    suffix = ext_map.get(content_type, ".webm")
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        model = _get_whisper_model()
+        result = model.transcribe(tmp_path, fp16=False, language="en")
+        transcript = result.get("text", "").strip()
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"detail": str(exc), "code": "whisper_load_error"},
+        )
+    except Exception as exc:
+        fire_audit("genai", "ERROR", f"Whisper transcription failed: {exc}", {})
+        raise HTTPException(
+            status_code=500,
+            detail={"detail": f"Transcription failed: {str(exc)}", "code": "transcription_error"},
+        )
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+
+    return {"transcript": transcript}
+
+
+
+# ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
 

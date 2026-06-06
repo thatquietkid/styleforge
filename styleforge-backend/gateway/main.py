@@ -239,6 +239,7 @@ _PUBLIC_PREFIXES = (
     "/openapi.json",
     "/redoc",
     "/uploads",
+    "/api/v1/genai/transcribe",  # voice transcription — free, no auth
 )
 
 
@@ -820,6 +821,40 @@ async def genai_credits(
 ):
     user = _verify_jwt(request)
     return await _forward(request, settings.genai_service_url, user)
+
+
+@genai_router.post(
+    "/transcribe",
+    summary="Transcribe browser-recorded audio via local Whisper (no auth, no credits)",
+    description=(
+        "Accepts a raw audio blob (webm, ogg, wav, mp4) recorded by the browser's MediaRecorder API. "
+        "Runs openai-whisper locally and returns the transcript as plain text. "
+        "No JWT required, no credits deducted."
+    ),
+)
+async def genai_transcribe(
+    request: Request,
+    audio: UploadFile = File(..., description="Audio blob from MediaRecorder"),
+):
+    """Proxy multipart audio upload to genai service for Whisper transcription."""
+    target_url = f"{settings.genai_service_url}/api/v1/genai/transcribe"
+    # Strip content-type & length so httpx recalculates them for the new multipart body
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-type", "content-length")}
+
+    audio_bytes = await audio.read()
+    files = {"audio": (audio.filename or "voice.webm", audio_bytes, audio.content_type or "audio/webm")}
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            resp = await client.post(url=target_url, headers=headers, files=files)
+        except httpx.RequestError:
+            raise _error(503, "Transcription service unavailable. Please try again later.", "service_unavailable")
+
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        media_type=resp.headers.get("content-type", "application/json"),
+    )
 
 
 # ---------------------------------------------------------------------------
