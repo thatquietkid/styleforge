@@ -89,7 +89,7 @@ StyleForge is a full-stack, AI-driven fashion platform built for the modern era.
 
 ### 🎨 AI Fashion Design — Outfit Generation
 
-https://github.com/thatquietkid/styleforge/raw/main/docs/videos/AI_Fashion_Design.mp4
+https://youtu.be/-LI_rz6rgSI
 
 <details>
 <summary>📋 What this demo shows</summary>
@@ -105,7 +105,7 @@ https://github.com/thatquietkid/styleforge/raw/main/docs/videos/AI_Fashion_Desig
 
 ### 🧵 Fabric Simulation — Physics-Based Drape
 
-https://github.com/thatquietkid/styleforge/raw/main/docs/videos/fabric_sim.mp4
+https://youtu.be/Lq3ngF2RZ8M
 
 <details>
 <summary>📋 What this demo shows</summary>
@@ -121,7 +121,7 @@ https://github.com/thatquietkid/styleforge/raw/main/docs/videos/fabric_sim.mp4
 
 ### 🤖 AI Style Critique — Editorial Fashion Analysis
 
-https://github.com/thatquietkid/styleforge/raw/main/docs/videos/style-crit.mp4
+https://youtu.be/GI-9dDbxCJ8
 
 <details>
 <summary>📋 What this demo shows</summary>
