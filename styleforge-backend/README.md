@@ -229,7 +229,10 @@ SMTP_FROM="StyleForge <noreply@styleforge.com>"
 # Ollama (Style Critique)
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=qwen3.5:9b
-OLLAMA_TIMEOUT=120
+OLLAMA_TIMEOUT=420
+
+# Long-running GenAI proxy/backend calls
+GENAI_REQUEST_TIMEOUT=420
 
 # Colab / ComfyUI (Outfit Generation)
 COLAB_URL=https://your-ngrok-url.ngrok-free.dev

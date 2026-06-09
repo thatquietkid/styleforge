@@ -6,7 +6,7 @@
 
 ### *Where Artificial Intelligence Meets High Fashion*
 
-**An AI-powered fashion platform that critiques your outfits, simulates fabrics, and generates apparel designs — all from a single, beautifully crafted interface.**
+**An AI-powered fashion platform that critiques your outfits, simulates fabrics, and generates apparel designs - all from a single, beautifully crafted interface.**
 
 <br/>
 
@@ -20,7 +20,7 @@
 
 <br/>
 
-[🚀 Get Started](#-quick-start) · [🧠 Features](#-features) · [🏗️ Architecture](#️-architecture) · [📡 API Docs](#-api-documentation) · [🤝 Contributing](#-contributing)
+[🖼️ Screenshots](#-screenshots) · [🎬 Demo Videos](#-demo-videos) · [🚀 Quick Start](#-quick-start) · [🧠 Features](#-features) · [🏗️ Architecture](#️-architecture) · [📡 API Docs](#-api-documentation) · [📄 Dissertation](#-research--dissertation)
 
 ---
 
@@ -31,6 +31,110 @@
 StyleForge is a full-stack, AI-driven fashion platform built for the modern era. Upload an outfit photo and receive a **sharp, editorial-style critique** from an elite AI fashion director. Simulate fabric physics in real-time. Generate entirely new apparel concepts from text prompts. All powered by a robust **microservices backend** and a sleek **Next.js 16** frontend.
 
 > *StyleForge turns AI into your personal Creative Director.*
+
+---
+
+## 🖼️ Screenshots
+
+### Home & Landing
+
+<div align="center">
+  <img src="docs/screenshots/home.png" alt="StyleForge Home Page" width="100%"/>
+  <p><em>The StyleForge landing page - animated hero section showcasing the platform's AI fashion capabilities</em></p>
+</div>
+
+<br/>
+
+### Platform Features
+
+<div align="center">
+  <img src="docs/screenshots/features.png" alt="Features Overview" width="100%"/>
+  <p><em>Feature overview - Style Critique, Fabric Simulation, and AI Outfit Generation at a glance</em></p>
+</div>
+
+<br/>
+
+### AI Tools in Action
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/screenshots/ai-outfit.png" alt="AI Outfit Generation" width="100%"/>
+        <br/><sub><b>🎨 AI Outfit Generation</b> - Text-to-fashion design via Diffusion model</sub>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/screenshots/fabric-sim.png" alt="Fabric Simulation" width="100%"/>
+        <br/><sub><b>🧵 Fabric Simulation</b> - Real-time physics-based fabric drape rendering</sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="docs/screenshots/fashion-critique.png" alt="AI Fashion Critique" width="100%"/>
+        <br/><sub><b>🤖 AI Style Critique</b> - Editorial-grade outfit analysis powered by Qwen 3.5:9b</sub>
+      </td>
+      <td align="center" width="50%">
+        <img src="docs/screenshots/dash1.png" alt="User Dashboard" width="100%"/>
+        <br/><sub><b>👤 User Dashboard</b> - Credit balance, generation history, and saved images</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+> 📁 Place all screenshots in `docs/screenshots/` at the repository root.
+
+---
+
+## 🎬 Demo Videos
+
+### 🎨 AI Fashion Design — Outfit Generation
+
+https://github.com/thatquietkid/styleforge/raw/main/docs/videos/AI_Fashion_Design.mp4
+
+<details>
+<summary>📋 What this demo shows</summary>
+
+- Entering a natural-language outfit prompt (e.g. *"oversized sage linen blazer, wide-leg cream trousers, minimalist loafers"*)
+- Credit deduction (10 credits) and live progress indicator
+- The generated apparel design rendered by the Colab inference backend
+- Saving the result to the personal image gallery
+
+</details>
+
+---
+
+### 🧵 Fabric Simulation — Physics-Based Drape
+
+https://github.com/thatquietkid/styleforge/raw/main/docs/videos/fabric_sim.mp4
+
+<details>
+<summary>📋 What this demo shows</summary>
+
+- Selecting a fabric type (Silk, Velvet, Denim, Cotton, Wool)
+- Adjusting weight, stiffness, and color parameters with real-time sliders
+- Generating a physics-based fabric drape render
+- Viewing and saving the base64-rendered simulation output
+
+</details>
+
+---
+
+### 🤖 AI Style Critique — Editorial Fashion Analysis
+
+https://github.com/thatquietkid/styleforge/raw/main/docs/videos/style-crit.mp4
+
+<details>
+<summary>📋 What this demo shows</summary>
+
+- Uploading an outfit photo (drag & drop)
+- Credit deduction (5 credits) and submission to the Ollama/Qwen backend
+- Receiving the structured markdown critique:
+  - **Core Issue** — the single biggest flaw in the outfit
+  - **Aesthetic Breakdown** — color harmony, fit & silhouette, textures
+  - **Execution Plan** — actionable garment swaps, tailoring tips, accessory refinements
+- Critique persisted to user history for future reference
+
+</details>
 
 ---
 
@@ -241,11 +345,45 @@ pytest tests/test_auth.py -v
 
 ---
 
+## 📄 Research & Dissertation
+
+This platform was developed as part of a final-year undergraduate dissertation in Software Engineering. The full academic report covers the system design, AI pipeline architecture, evaluation methodology, and findings in depth.
+
+<div align="center">
+
+[![Read the Dissertation](https://img.shields.io/badge/📄%20Read%20the%20Dissertation-View%20PDF-red?style=for-the-badge)](./Dissertation.pdf)
+
+</div>
+
+The dissertation covers:
+
+- **Literature Review** — Virtual try-on systems, diffusion models, ControlNet, LoRA fine-tuning, and AI-assisted fashion
+- **System Design** — Microservices architecture decisions, database schema design, and the AI pipeline
+- **Implementation** — Full-stack development with FastAPI, Next.js, and local LLM inference via Ollama
+- **AI Pipeline** — Mask quality as the highest-leverage variable in virtual try-on; evaluation of Qwen 3.5:9b for style critique
+- **Evaluation** — Quantitative and qualitative assessment of generation quality and system performance
+- **Reflections** — Retrospective improvements: earlier adoption of purpose-built try-on models, investment in evaluation infrastructure, and Triton Inference Server
+
+---
+
 ## 📁 Repository Structure
 
 ```
 styleforge/
 ├── README.md                    ← You are here
+├── Dissertation.pdf             ← Full academic report
+├── docs/
+│   ├── screenshots/
+│   │   ├── home.png
+│   │   ├── features.png
+│   │   ├── ai-outfit.png
+│   │   ├── dash1.png
+│   │   ├── fabric-sim.png
+│   │   └── fashion-critique.png
+│   └── videos/
+│       ├── AI_Fashion_Design.mp4
+│       ├── fabric_sim.mp4
+│       └── style-crit.mp4
 ├── styleforge-frontend/
 │   ├── README.md                ← Frontend-specific docs
 │   └── ...

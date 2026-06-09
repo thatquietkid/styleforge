@@ -32,12 +32,12 @@ if resp.status_code == 200:
     }
     
     try:
-        # High timeout (5 minutes) since generation takes 2-3 minutes
+        # High timeout (7 minutes) to cover the full GenAI generation window
         resp = requests.post(
             f"{base_url}/api/v1/genai/generate/scratch-or-sketch",
             headers=headers,
             data=data,
-            timeout=300.0
+            timeout=420.0
         )
         
         if resp.status_code == 200:

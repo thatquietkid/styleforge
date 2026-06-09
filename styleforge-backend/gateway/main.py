@@ -277,7 +277,7 @@ async def _forward(request: Request, target_base: str, user: Optional[dict] = No
         headers["x-user-id"] = str(user.get("sub", ""))
         headers["x-user-role"] = str(user.get("role", ""))
 
-    timeout = 300.0 if "/api/v1/genai" in request.url.path else 30.0
+    timeout = settings.genai_request_timeout if "/api/v1/genai" in request.url.path else 30.0
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
@@ -715,7 +715,7 @@ async def genai_generate_scratch_or_sketch(
         file_bytes = await sketch_file.read()
         files["sketch_file"] = (sketch_file.filename or "sketch.png", file_bytes, sketch_file.content_type)
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=settings.genai_request_timeout) as client:
         try:
             resp = await client.post(
                 url=target_url,
@@ -769,7 +769,7 @@ async def genai_style_critique(
     file_bytes = await image.read()
     files = {"image": (image.filename or "outfit.jpg", file_bytes, image.content_type)}
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
+    async with httpx.AsyncClient(timeout=settings.genai_request_timeout) as client:
         try:
             resp = await client.post(url=target_url, headers=headers, files=files)
         except httpx.RequestError:
@@ -844,7 +844,7 @@ async def genai_transcribe(
     audio_bytes = await audio.read()
     files = {"audio": (audio.filename or "voice.webm", audio_bytes, audio.content_type or "audio/webm")}
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=settings.genai_request_timeout) as client:
         try:
             resp = await client.post(url=target_url, headers=headers, files=files)
         except httpx.RequestError:

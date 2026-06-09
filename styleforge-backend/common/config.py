@@ -27,7 +27,10 @@ class Settings(BaseSettings):
     # Ollama / local VLM settings
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3.5:9b"
-    ollama_timeout: int = 120          # seconds to wait for model response
+    ollama_timeout: int = 420          # seconds to wait for model response
+
+    # Long-running GenAI proxy/backend calls (5-7 minutes)
+    genai_request_timeout: int = 420
 
     # Credit system costs
     new_user_credits: int = 100        # credits granted to a brand-new user

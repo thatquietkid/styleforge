@@ -533,7 +533,7 @@ async def generate_scratch_or_sketch(
         "positive_prompt": positive_prompt[:200],
     })
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=settings.genai_request_timeout) as client:
         # Health check
         try:
             health_resp = await client.get(f"{COLAB_URL}/health", timeout=10.0)
@@ -630,7 +630,7 @@ async def simulate_fabric(
 
     # Forward to Colab at /simulate
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=settings.genai_request_timeout) as client:
             colab_resp = await client.post(
                 f"{COLAB_URL}/simulate",
                 json={
